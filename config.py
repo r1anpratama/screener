@@ -27,22 +27,22 @@ TICKERS = [
     "TOWR", "UNTR", "WIKA",
 
     # === Small Cap (Potensi Tinggi, Risiko Tinggi) ===
-    "ACES", "AGII", "AKRA", "AMRT", "ARNA", "BATA", "BIRD", "BJTM",
+    "ACES", "AGII", "AKRA", "AMRT", "FUTR", "MINA", "BIRD", "BJTM",
     "BRIS", "BRPT", "BTPS", "CLEO", "CTRA", "DMAS", "DSNG",
     "ELSA", "EMTK", "ESSA", "FILM", "GJTL", "HEAL", "HERO",
-    "HOKI", "HRTA", "ISAT", "KAEF", "KIJA", "LINK", "LPPF",
-    "MAPA", "MARK", "MEGA", "MLBI", "MYOR", "PNLF", "PTPP",
-    "RAJA", "RALS", "RANC", "SMSM", "SPTM", "SSMS", "STTP",
-    "TAPG", "TAXI", "TELE", "TOBA", "TPIA", "TSPC", "ULTJ",
+    "HOKI", "HRTA", "ISAT", "KAEF", "KIJA", "RMKO", "LPPF",
+    "MAPA", "MINA", "MEGA", "MLBI", "MYOR", "PNLF", "PTPP",
+    "RAJA", "RALS", "SUPA", "SMSM", "SPTM", "OASA", "STTP",
+    "TAPG", "TAXI", "AMMN", "TOBA", "TPIA", "BRMS", "ULTJ",
     "VIVA", "WSBP", "WSKT", "WTON",
 
     # === Saham Lapis 3 (Spekulatif) ===
     "AALI", "ADHI", "ADMR", "AGRO", "ALTO", "APLN", "ASRI", "ASGR",
-    "BALI", "BAYU", "BBKP", "BBMD", "BBTN", "BCAP", "BCIC",
-    "BDMN", "BEKS", "BGTG", "BINA", "BKSL", "BMTR", "BNBR",
+    "BALI", "BAYU", "BBKP", "BBMD", "BBTN", "BCAP", "DEWA",
+    "PADI", "BEKS", "BGTG", "BINA", "BKSL", "BMTR", "BNBR",
     "BNGA", "BNLI", "BRAM", "BUMI", "DILD", "DKFT", "DNET",
     "DOID", "DSFI", "ELTY", "ENRG", "FREN", "GEMS", "GIAA",
-    "GPRA", "GWSA", "HRUM", "IBST", "INDY", "IPCM", "IRRA",
+    "GOTO", "GWSA", "HRUM", "IBST", "INDY", "IPCM", "IRRA",
 ]
 
 
@@ -89,6 +89,14 @@ RSI_OVERSOLD_THRESHOLD = 25
 # --- Bandarmology (VWAP) ---
 # Rasio minimum Close/VWAP untuk menandakan akumulasi bandar
 VWAP_RATIO_THRESHOLD = 1.0
+
+
+# --- Momentum Spikes ---
+# Periode rata-rata volume (Volume Moving Average)
+VMA_PERIOD = 20
+
+# Target threshold probabilitas kemenangan (Contoh 0.05 = mencari saham > 5% besok)
+TARGET_RETURN_THRESHOLD = 0.05
 
 
 # --- Pre-Closing Anomaly ---

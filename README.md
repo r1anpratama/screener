@@ -12,6 +12,7 @@ Sistem ini menggunakan **Machine Learning (Multi-Cluster XGBoost)** dan mengombi
   - Historis 3 tahun dari **Yahoo Finance** (`yfinance`).
   - Data sentimen riil dari **API Resmi BEI (IDX)**.
 - **Bypass Cloudflare IDX:** Terintegrasi dengan `curl_cffi` (teknik impersonasi Chrome) yang memungkinkan skrip ini mengambil data langsung dari `idx.co.id` dari jaringan mana pun di dunia tanpa terkena blokir 403 Forbidden.
+- **Deteksi "High Flyer" (Baru!):** Fitur terbaru *Momentum Spikes* (`volume_spike_ratio` dan `close_to_high_ratio`) untuk mencari jejak akumulasi bandar. Target Machine Learning di-tune secara ketat untuk hanya merekomendasikan saham yang memiliki **potensi lonjakan > 5% keesokan harinya**.
 - **Machine Learning: Cluster-then-Predict Architecture:**
   - **Unsupervised Learning (K-Means):** AI secara otomatis menghitung *Profil Historis* (volatilitas dan rata-rata likuiditas log-transformed) tiap saham, lalu membagi ratusan saham ke dalam klaster yang berbeda (Blue-chip, Gorengan, Medium).
   - **Supervised Learning (Multi-XGBoost):** AI melatih model spesialis terpisah untuk setiap klaster. Saham gorengan dievaluasi dengan cara yang berbeda dari saham blue-chip.
@@ -62,8 +63,8 @@ Pipeline akan secara otomatis:
 | `config.py` | Konstanta global, daftar 128+ ticker IHSG. |
 | `idx_client.py` | Modul klien IDX API canggih dengan bypass Cloudflare (`curl_cffi`). |
 | `data_ingestion.py` | Pengumpulan data dari Yahoo Finance (3 Tahun) dan IDX. |
-| `feature_engineering.py` | Kalkulasi indikator teknikal, Profil Saham, dan log-transform. |
-| `ml_model.py` | Arsitektur inti: K-Means Clustering + Optuna + XGBoost Multi-Model. |
+| `feature_engineering.py` | Kalkulasi indikator teknikal, Momentum Spikes, Profil Saham, dan log-transform. |
+| `ml_model.py` | Arsitektur inti: K-Means Clustering + Optuna + XGBoost Multi-Model dengan target kenaikan >5%. |
 | `report_generator.py` | Modul pencetak otomatis laporan pialang `.md` dan grafik `mplfinance`. |
 | `screener.py` | Orchestrator utama yang menyambungkan seluruh alur pipeline. |
 | `main.py` | Entry point aplikasi (menangani format CLI output). |

@@ -18,7 +18,7 @@ import ta
 from config import (
     ROLLING_WINDOW_DAYS, BB_PERCENTILE_THRESHOLD, SMA_PERIOD,
     BB_PERIOD, BB_STD_DEV, RSI_PERIOD, RSI_OVERSOLD_THRESHOLD,
-    VWAP_RATIO_THRESHOLD
+    VWAP_RATIO_THRESHOLD, VMA_PERIOD
 )
 
 
@@ -162,6 +162,40 @@ class FeatureEngineer:
 
         return pd.concat(result_frames, ignore_index=True)
 
+    def calc_momentum_spikes(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Menghitung fitur Momentum dan Volume Spike.
+        1. volume_spike_ratio: rasio volume hari ini dibanding Volume Moving Average.
+        2. close_to_high_ratio: kedekatan penutupan dengan harga tertinggi hari ini.
+        """
+        result_frames = []
+
+        for ticker, group in df.groupby("ticker"):
+            group = group.copy().sort_values("date").reset_index(drop=True)
+
+            # Volume Moving Average
+            group["vma_20"] = group["volume"].rolling(window=VMA_PERIOD, min_periods=1).mean()
+            
+            # Volume Spike Ratio
+            # Handle division by zero
+            group["volume_spike_ratio"] = np.where(
+                group["vma_20"] > 0, 
+                group["volume"] / group["vma_20"], 
+                1.0
+            )
+
+            # Close vs High Ratio: (Close - Low) / (High - Low)
+            range_val = group["high"] - group["low"]
+            group["close_to_high_ratio"] = np.where(
+                range_val > 0,
+                (group["close"] - group["low"]) / range_val,
+                1.0 # Jika tidak ada pergerakan, asumsikan kuat di penutupan jika close==high
+            )
+
+            result_frames.append(group)
+
+        return pd.concat(result_frames, ignore_index=True)
+
     def calc_idx_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Menghitung fitur tambahan dari data IDX API.
@@ -248,7 +282,11 @@ class FeatureEngineer:
         print("   -> Menghitung VWAP & Rasio Bandarmologi...")
         df = self.calc_bandarmology_vwap(df)
 
-        # 4. IDX Features (Foreign Flow + Bid/Offer Sentiment)
+        # 4. Momentum Spikes
+        print("   -> Menghitung Momentum Spikes & Price Action...")
+        df = self.calc_momentum_spikes(df)
+
+        # 5. IDX Features (Foreign Flow + Bid/Offer Sentiment)
         print("   -> Menghitung fitur IDX (Foreign Flow, Bid/Offer)...")
         df = self.calc_idx_features(df)
 

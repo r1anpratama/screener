@@ -17,7 +17,7 @@ from sklearn.metrics import classification_report, roc_auc_score, accuracy_score
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import optuna
-from config import RANDOM_SEED
+from config import RANDOM_SEED, TARGET_RETURN_THRESHOLD
 
 
 class T1ProbabilityModel:
@@ -49,6 +49,8 @@ class T1ProbabilityModel:
         "bb_bandwidth",          # Bollinger Bandwidth (volatilitas)
         "rsi_14",                # RSI 14 hari (momentum)
         "vwap_ratio",            # Rasio Close/VWAP (bandarmologi)
+        "volume_spike_ratio",    # Rasio Volume hari ini terhadap VMA 20
+        "close_to_high_ratio",   # Marubozu / Kekuatan penutupan
         # === Fitur dari IDX API (data riil BEI) ===
         "foreign_net",           # Net foreign flow (positif = asing beli)
         "bid_offer_ratio",       # Rasio bid/offer volume (sentimen orderbook)
@@ -94,9 +96,9 @@ class T1ProbabilityModel:
         for ticker, group in df.groupby("ticker"):
             group = group.copy().sort_values("date")
 
-            # Target: apakah Close besok lebih tinggi dari Close hari ini?
+            # Target: apakah Close besok melonjak sesuai threshold?
             group["next_close"] = group["close"].shift(-1)
-            group["target"] = (group["next_close"] > group["close"]).astype(int)
+            group["target"] = (group["next_close"] > (group["close"] * (1.0 + TARGET_RETURN_THRESHOLD))).astype(int)
 
             # Hapus baris terakhir (tidak ada data besok untuk dijadikan label)
             group = group.dropna(subset=["target"])
