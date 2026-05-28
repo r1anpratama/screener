@@ -16,8 +16,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, roc_auc_score, accuracy_score, precision_score, recall_score
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPClassifier
 import optuna
+import pickle
+import os
 from config import RANDOM_SEED, TARGET_RETURN_THRESHOLD
+
 
 
 class T1ProbabilityModel:
@@ -343,3 +347,180 @@ class T1ProbabilityModel:
         })
         df_imp.sort_values("importance", ascending=False, inplace=True)
         return df_imp.reset_index(drop=True)
+
+
+class SelfLearningMetaFilter:
+    """
+    Deep Learning Meta-Filter (Multi-Layer Perceptron Neural Network)
+    yang mempelajari kesalahan prediksi (False Positives) dan keberhasilan
+    prediksi (True Positives) untuk menyaring sinyal gagal di hari berikutnya.
+    """
+    FEATURE_COLS = [
+        "bb_bandwidth",
+        "rsi_14",
+        "vwap_ratio",
+        "volume_spike_ratio",
+        "close_to_high_ratio",
+        "foreign_net",
+        "bid_offer_ratio",
+        "hist_volatility",
+        "avg_volume"
+    ]
+    
+    def __init__(self, model_path: str = "analisa/meta_filter_model.pkl"):
+        self.model_path = model_path
+        self.model = None
+        self.scaler = StandardScaler()
+        self.is_trained = False
+        self.diagnoses = []
+        self.policies = []
+        self.load()
+        
+    def save(self):
+        os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
+        with open(self.model_path, "wb") as f:
+            pickle.dump({
+                "model": self.model,
+                "scaler": self.scaler,
+                "is_trained": self.is_trained,
+                "diagnoses": self.diagnoses,
+                "policies": self.policies
+            }, f)
+            
+    def load(self):
+        if os.path.exists(self.model_path):
+            try:
+                with open(self.model_path, "rb") as f:
+                    data = pickle.load(f)
+                    self.model = data.get("model")
+                    self.scaler = data.get("scaler")
+                    self.is_trained = data.get("is_trained", False)
+                    self.diagnoses = data.get("diagnoses", [])
+                    self.policies = data.get("policies", [])
+            except Exception as e:
+                print(f"[ERROR] Gagal memuat meta-filter model: {e}")
+
+    def train_epochs(self, X: np.ndarray, y: np.ndarray, epochs: int = 10, print_callback=print) -> list:
+        # Scale data
+        X_scaled = self.scaler.fit_transform(X)
+        
+        # Initialize MLPClassifier
+        self.model = MLPClassifier(
+            hidden_layer_sizes=(16, 8),
+            activation="relu",
+            solver="adam",
+            learning_rate_init=0.02,
+            random_state=42,
+            max_iter=1,
+            warm_start=True
+        )
+        
+        classes = np.array([0, 1])
+        history_logs = []
+        
+        print_callback(f"[NEURAL NET] Memulai training meta-filter deep learning selama {epochs} epoch...")
+        
+        # If there are too few samples, duplicate them to ensure gradient stability
+        if len(X) < 5:
+            X_scaled = np.tile(X_scaled, (5, 1))
+            y = np.tile(y, 5)
+            
+        for epoch in range(1, epochs + 1):
+            self.model.partial_fit(X_scaled, y, classes=classes)
+            
+            # Predict to get loss/accuracy
+            preds = self.model.predict(X_scaled)
+            probs = self.model.predict_proba(X_scaled)[:, 1]
+            
+            # Manual log-loss calculation for premium output
+            epsilon = 1e-15
+            probs = np.clip(probs, epsilon, 1 - epsilon)
+            loss = -np.mean(y * np.log(probs) + (1 - y) * np.log(1 - probs))
+            
+            acc = np.mean(preds == y) * 100
+            log_line = f"   [Epoch {epoch:2d}/{epochs:2d}] LogLoss: {loss:.4f} | Akurasi Meta-Filter: {acc:.1f}%"
+            print_callback(log_line)
+            history_logs.append(log_line)
+            
+        self.is_trained = True
+        self.save()
+        return history_logs
+
+    def predict_correction_score(self, df_row: pd.Series) -> float:
+        """
+        Mengembalikan skor probabilitas lolos meta-filter (0.0 sampai 1.0).
+        Semakin tinggi skor, semakin aman saham tersebut dari pola kegagalan historis baru.
+        """
+        if not self.is_trained or self.model is None:
+            return 1.0 # Default: no correction if not trained
+            
+        # Extract features
+        x_vals = []
+        for col in self.FEATURE_COLS:
+            val = df_row.get(col, 0.0)
+            if pd.isna(val):
+                val = 0.0
+            x_vals.append(val)
+            
+        x_arr = np.array([x_vals])
+        try:
+            x_scaled = self.scaler.transform(x_arr)
+            prob_success = self.model.predict_proba(x_scaled)[0, 1]
+            return float(prob_success)
+        except Exception as e:
+            print(f"[ERROR] Meta-Filter Predict Error: {e}")
+            return 1.0
+
+
+def generate_hindsight_diagnoses(failed_picks_df: pd.DataFrame) -> list:
+    diagnoses = []
+    for _, row in failed_picks_df.iterrows():
+        ticker = row["ticker"]
+        date = row["date_str"] if "date_str" in row else row["date"]
+        if isinstance(date, pd.Timestamp):
+            date = date.strftime("%Y-%m-%d")
+        else:
+            date = str(date).split()[0]
+            
+        rsi = row.get("rsi_14", 50.0)
+        vol_spike = row.get("volume_spike_ratio", 1.0)
+        bid_offer = row.get("bid_offer_ratio", 1.0)
+        vwap_ratio = row.get("vwap_ratio", 1.0)
+        bandwidth = row.get("bb_bandwidth", 30.0)
+        
+        reasons = []
+        corrections = []
+        
+        if rsi > 68:
+            reasons.append(f"saham terlampau overbought (RSI = {rsi:.1f}), rawan aksi ambil untung retail")
+            corrections.append("seharusnya menolak entry jika RSI(14) > 68.")
+        if vol_spike < 1.3:
+            reasons.append(f"lonjakan volume breakout tidak solid (Volume Spike = {vol_spike:.2f}x VMA20)")
+            corrections.append("seharusnya mensyaratkan konfirmasi volume spike minimal 1.5x.")
+        if bid_offer < 1.1:
+            reasons.append(f"rasio antrian Bid/Offer lemah ({bid_offer:.2f}), menawarkan resistansi tebal di offer")
+            corrections.append("seharusnya mensyaratkan Bid/Offer ratio orderbook >= 1.1.")
+        if vwap_ratio < 0.98:
+            reasons.append(f"penutupan harga di bawah VWAP ({vwap_ratio:.4f}), indikasi bandar mendistribusikan saham")
+            corrections.append("seharusnya melarang entry jika harga berada di bawah harga VWAP hari ini.")
+        if bandwidth > 55:
+            reasons.append(f"bandwidth Bollinger sangat lebar ({bandwidth:.1f}%), pergerakan terlalu liar/volatile")
+            corrections.append("seharusnya menghindari breakout pada saham dengan bandwidth volatilitas > 55%.")
+            
+        # Fallback if no specific condition met
+        if not reasons:
+            reasons.append("breakout gagal karena pelemahan sentimen sektoral dadakan di hari berikutnya")
+            corrections.append("seharusnya memperketat trailing stop loss ke 1.0x ATR untuk membatasi risiko.")
+            
+        # Capitalize the first letter of reasons to make it read nicely
+        reason_str = " dan ".join(reasons)
+        reason_str = reason_str[0].upper() + reason_str[1:]
+        
+        diagnoses.append({
+            "date": date,
+            "ticker": ticker,
+            "reason": reason_str,
+            "correction": " ".join(corrections)
+        })
+    return diagnoses
+

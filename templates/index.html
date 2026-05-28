@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IHSG Institutional ML Stock Screener Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Marked for beautiful Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Custom Style CSS -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">📈</div>
+                <div class="brand-text">
+                    <h1>IDX QUANT</h1>
+                    <span>Institutional ML</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <button class="menu-item active" data-tab="dashboard">
+                    <svg viewBox="0 0 24 24" class="menu-icon"><path d="M4 13h6c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1zm0 8h6c.55 0 1-.45 1-1v-4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1zm10 0h6c.55 0 1-.45 1-1v-8c0-.55-.45-1-1-1h-6c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1zM13 4v4c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1h-6c-.55 0-1 .45-1 1z"/></svg>
+                    <span>Market Dashboard</span>
+                </button>
+                <button class="menu-item" data-tab="backtester">
+                    <svg viewBox="0 0 24 24" class="menu-icon"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                    <span>Profit Backtester</span>
+                </button>
+                <button class="menu-item" data-tab="reports">
+                    <svg viewBox="0 0 24 24" class="menu-icon"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    <span>Report Explorer</span>
+                </button>
+                <button class="menu-item" data-tab="charting">
+                    <svg viewBox="0 0 24 24" class="menu-icon"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L3 15.66l.5 2.83z"/></svg>
+                    <span>Technical Charting</span>
+                </button>
+                <button class="menu-item" data-tab="learning">
+                    <svg viewBox="0 0 24 24" class="menu-icon"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-1.3l-.85-.6C7.8 13.15 7 11.18 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 2.18-.8 4.15-2.15 5.1z"/></svg>
+                    <span>ML Self-Learning</span>
+                </button>
+                <button class="menu-item" data-tab="console">
+                    <svg viewBox="0 0 24 24" class="menu-icon"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 12H4v-2h8v2zm8-4H4V8h16v4z"/></svg>
+                    <span>Live Console</span>
+                    <span class="status-indicator-dot offline" id="terminal-dot"></span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="system-status">
+                    <div class="status-top">
+                        <span class="status-label">Pipeline Status:</span>
+                        <span class="status-value idle" id="pipeline-status">Idle</span>
+                    </div>
+                    <div class="progress-bar-container mini-progress">
+                        <div class="progress-bar" id="pipeline-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block btn-pulse" id="run-pipeline-btn">
+                    ⚡ Run Screener
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Display Content Area -->
+        <main class="main-content">
+            
+            <!-- Top Header Stats bar -->
+            <header class="main-header">
+                <div class="header-title">
+                    <h2 id="current-tab-title">Market Dashboard</h2>
+                    <p id="current-tab-subtitle">Institutional High-Flyer Stocks & Kelly Position Sizing for T+1 Trading</p>
+                </div>
+                
+                <div class="market-indexes">
+                    <div class="index-card">
+                        <span class="index-name">IHSG Index</span>
+                        <span class="index-val" id="ihsg-index-val">Loading...</span>
+                    </div>
+                    <div class="index-card" id="market-regime-card">
+                        <span class="index-name">Market Regime</span>
+                        <span class="index-val" id="market-regime-val">Loading...</span>
+                    </div>
+                    <div class="index-card">
+                        <span class="index-name">Last Screening</span>
+                        <span class="index-val" id="last-screening-time">Never</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- TAB 1: MARKET DASHBOARD -->
+            <section class="tab-content active" id="tab-dashboard">
+                <div class="dashboard-grid">
+                    
+                    <!-- Main table card -->
+                    <div class="card card-full">
+                        <div class="card-header">
+                            <div class="header-left">
+                                <span class="card-badge">LIVE PICKS</span>
+                                <h3>Machine Learning Daily Top Recommendations</h3>
+                            </div>
+                            <div class="header-right">
+                                <span class="text-muted font-sm">Sorted by Composite Profit Score</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="quant-table" id="picks-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Emiten</th>
+                                            <th>Harga</th>
+                                            <th>Prob. T+1</th>
+                                            <th>Skor Profit</th>
+                                            <th>Alokasi Kelly</th>
+                                            <th>Stop Loss</th>
+                                            <th>Take Profit</th>
+                                            <th>RSI(14)</th>
+                                            <th>Bid/Offer</th>
+                                            <th>Volume</th>
+                                            <th>Sinyal Aktif</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="11" class="text-center py-5">
+                                                <div class="spinner"></div>
+                                                <p class="text-muted mt-2">Loading latest picks data...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Highlight summary cards -->
+                    <div class="card card-full">
+                        <div class="card-header">
+                            <h3>Strategy Risk Parameters</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="risk-indicators">
+                                <div class="risk-metric">
+                                    <div class="rm-header">
+                                        <span>Stop Loss Distance (Average)</span>
+                                        <span class="font-red">1.5x ATR</span>
+                                    </div>
+                                    <div class="rm-bar-bg"><div class="rm-bar-fill fill-red" style="width: 30%"></div></div>
+                                </div>
+                                <div class="risk-metric">
+                                    <div class="rm-header">
+                                        <span>Take Profit Distance (Average)</span>
+                                        <span class="font-green">3.0x ATR</span>
+                                    </div>
+                                    <div class="rm-bar-bg"><div class="rm-bar-fill fill-green" style="width: 60%"></div></div>
+                                </div>
+                                <div class="risk-metric">
+                                    <div class="rm-header">
+                                        <span>Risk-Reward Profile (R Ratio)</span>
+                                        <span class="font-blue">1 : 2.0 (Double Reward)</span>
+                                    </div>
+                                    <div class="rm-bar-bg"><div class="rm-bar-fill fill-blue" style="width: 50%"></div></div>
+                                </div>
+                                <div class="risk-metric">
+                                    <div class="rm-header">
+                                        <span>ML Target Threshold</span>
+                                        <span>&gt; 5.0% Kenaikan T+1</span>
+                                    </div>
+                                    <div class="rm-bar-bg"><div class="rm-bar-fill" style="width: 40%"></div></div>
+                                </div>
+                    </div>
+
+                    <!-- Walk-Forward Performance Tracker Table -->
+                    <div class="card card-full mt-4">
+                        <div class="card-header font-heading">
+                            <div class="header-left">
+                                <span class="card-badge bg-green">TRACKER</span>
+                                <h3>Walk-Forward Performance: Predicted vs Realized Outcomes</h3>
+                            </div>
+                            <div class="header-right">
+                                <span class="text-muted font-sm">Realized Win Rate: <strong class="font-green" id="realized-win-rate-val">-</strong> (Target = Next Day Max Gain &ge; 5%)</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="quant-table" id="tracker-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Tanggal Sinyal (T)</th>
+                                            <th>Saham</th>
+                                            <th>Harga Entry (T Close)</th>
+                                            <th>Tanggal Realisasi (T+1)</th>
+                                            <th>Harga Exit (T+1 Close)</th>
+                                            <th>T+1 Close Return</th>
+                                            <th>T+1 Max Gain</th>
+                                            <th>Akurasi Harian (T+1)</th>
+                                            <th>Status Sinyal (&ge; 5% Target)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="9" class="text-center py-4 text-muted">Loading tracker logs...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: PROFIT BACKTESTER -->
+            <section class="tab-content" id="tab-backtester">
+                <div class="backtester-grid">
+                    
+                    <!-- Left Sidebar Parameters -->
+                    <div class="card card-third">
+                        <div class="card-header">
+                            <h3>Simulation Controls</h3>
+                        </div>
+                        <div class="card-body">
+                            <form id="backtest-form" class="backtest-form">
+                                <div class="form-group">
+                                    <label for="initial_capital">Modal Awal (Rupiah)</label>
+                                    <input type="number" id="initial_capital" value="100000000" min="1000000" step="1000000" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="kelly_fraction">Kelly Fraction (Aggressiveness)</label>
+                                    <select id="kelly_fraction" class="form-control">
+                                        <option value="0.25">0.25 (Quarter-Kelly - Konservatif)</option>
+                                        <option value="0.5" selected>0.50 (Half-Kelly - Moderat / Standar)</option>
+                                        <option value="0.75">0.75 (Three-Quarter-Kelly)</option>
+                                        <option value="1.0">1.00 (Full-Kelly - Sangat Agresif)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="sl_multiplier">Stop Loss Multiplier (x ATR)</label>
+                                    <input type="number" id="sl_multiplier" value="1.5" min="0.5" max="5.0" step="0.1" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="tp_multiplier">Take Profit Multiplier (x ATR)</label>
+                                    <input type="number" id="tp_multiplier" value="3.0" min="1.0" max="10.0" step="0.1" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="trailing_multiplier">Trailing Stop Multiplier (x ATR)</label>
+                                    <input type="number" id="trailing_multiplier" value="2.0" min="0.5" max="8.0" step="0.1" class="form-control">
+                                </div>
+                                <button type="submit" class="btn btn-success btn-block mt-4" id="run-backtest-btn">
+                                    📈 Jalankan Backtest
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Right Charts & Metrics -->
+                    <div class="card card-twothirds">
+                        <div class="card-header">
+                            <div class="header-left">
+                                <span class="card-badge bg-green">EQUITY CURVE</span>
+                                <h3>High-Profit Strategy vs IHSG Baseline</h3>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="backtester-chart-container">
+                                <canvas id="backtestChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Summary -->
+                    <div class="card card-full">
+                        <div class="card-header">
+                            <h3>Performance Metrics Scorecard</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="metrics-row" id="backtest-metrics-row">
+                                <div class="metric-box">
+                                    <span class="mb-label">Total Return Strategy</span>
+                                    <span class="mb-value font-green" id="metric-return">-</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="mb-label">Benchmark Return (IHSG)</span>
+                                    <span class="mb-value font-muted" id="metric-benchmark">-</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="mb-label">Win Rate</span>
+                                    <span class="mb-value" id="metric-winrate">-</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="mb-label">Profit Factor</span>
+                                    <span class="mb-value font-blue" id="metric-profitfactor">-</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="mb-label">Max Drawdown</span>
+                                    <span class="mb-value font-red" id="metric-drawdown">-</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="mb-label">Sharpe Ratio</span>
+                                    <span class="mb-value" id="metric-sharpe">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: REPORT EXPLORER -->
+            <section class="tab-content" id="tab-reports">
+                <div class="reports-grid">
+                    
+                    <!-- Left Sidebar Reports List -->
+                    <div class="card card-third">
+                        <div class="card-header">
+                            <h3>Daily Analyst Folders</h3>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="report-dates-list" id="report-dates-container">
+                                <div class="text-center py-5 text-muted">
+                                    Belum ada laporan riset terbuat. Jalankan pipeline screening terlebih dahulu.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Display Analyst Sheet -->
+                    <div class="card card-twothirds">
+                        <div class="card-header border-bottom">
+                            <div class="header-left">
+                                <span class="card-badge bg-blue" id="active-report-badge">ANALYST BRIEFING</span>
+                                <h3 id="active-report-title">Research Report Viewer</h3>
+                            </div>
+                        </div>
+                        <div class="card-body markdown-body" id="report-view-container">
+                            <div class="text-center py-5 text-muted">
+                                👈 Pilih tanggal dan ticker emiten di bilah sisi untuk memuat Laporan Riset Institusional yang komprehensif.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: TECHNICAL CHARTING -->
+            <section class="tab-content" id="tab-charting">
+                <div class="charting-grid">
+                    <div class="card card-third">
+                        <div class="card-header">
+                            <h3>Select Stock Symbol</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label for="chart-ticker-select">Pilih Saham</label>
+                                <select id="chart-ticker-select" class="form-control">
+                                    <option value="">-- Pilih Ticker Saham --</option>
+                                </select>
+                            </div>
+                            <div class="stock-quick-details mt-4" id="stock-quick-details" style="display:none;">
+                                <h4>Technical Indicators Snapshot</h4>
+                                <ul class="quick-details-list">
+                                    <li><span>Last Close Price:</span> <strong id="qd-close">-</strong></li>
+                                    <li><span>RSI (14):</span> <strong id="qd-rsi">-</strong></li>
+                                    <li><span>Bollinger Band Upper:</span> <strong id="qd-bbu">-</strong></li>
+                                    <li><span>Bollinger Band Lower:</span> <strong id="qd-bbl">-</strong></li>
+                                    <li><span>20-day SMA:</span> <strong id="qd-sma">-</strong></li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Premium Broker Action Summary Widget (Baru) -->
+                            <div class="broker-action-panel mt-4" id="broker-action-panel" style="display:none; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
+                                <div class="flex-between align-center mb-2" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
+                                    <h4 style="color:#ffffff; font-size:0.95rem; font-weight:700; margin:0; font-family:Outfit;">Broker Action <span class="info-icon" title="Aktivitas Broker Summary (Buy vs Sell)" style="cursor:pointer; color:#9ca3af; font-size:0.8rem; margin-left:2px;">ⓘ</span></h4>
+                                    <span class="status-indicator-dot online" id="broker-dot" style="background:#8b5cf6; box-shadow:0 0 6px #8b5cf6;"></span>
+                                </div>
+                                
+                                <!-- Accumulation Gauge Bar -->
+                                <div class="broker-gauge-container mb-3" style="position:relative; margin-bottom: 1.25rem; padding: 0.25rem 0;">
+                                    <div class="broker-gauge-bar" style="display: flex; gap: 2px; height: 6px; border-radius: 3px; overflow: hidden; width: 100%; position:relative;">
+                                        <div style="flex: 1; background: #b91c1c;"></div> <!-- Big Dist -->
+                                        <div style="flex: 1; background: #991b1b;"></div> <!-- Dist -->
+                                        <div style="flex: 1; background: #374151;"></div> <!-- Neutral -->
+                                        <div style="flex: 1; background: #064e3b;"></div> <!-- Acc -->
+                                        <div style="flex: 1; background: #10b981;"></div> <!-- Big Acc -->
+                                    </div>
+                                    <!-- Gauge needle indicator -->
+                                    <div class="broker-gauge-indicator" id="broker-gauge-indicator" style="position:absolute; width: 4px; height: 16px; background: #6366f1; top: -1px; left: 50%; transform: translateX(-50%); border-radius: 2px; box-shadow: 0 0 10px rgba(99, 102, 241, 0.8); transition: left 0.5s ease-out; z-index: 2;"></div>
+                                </div>
+                                <div class="flex-between font-xs mt-1" style="display:flex; justify-content:space-between; font-size:0.68rem; color:#9ca3af; margin-top: -0.9rem; margin-bottom: 1rem; font-family: Outfit; font-weight: 500;">
+                                    <span>Big Dist</span>
+                                    <span>Neutral</span>
+                                    <span>Big Acc</span>
+                                </div>
+                                
+                                <!-- Broker Summary Buyer vs Seller Table -->
+                                <div class="table-responsive" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; background: rgba(10, 15, 29, 0.4);">
+                                    <table class="quant-table" id="broker-action-table" style="font-size:0.7rem; width:100%; border-collapse: collapse;">
+                                        <thead>
+                                            <tr style="border-bottom: 1px solid var(--border-color); background: rgba(255,255,255,0.02);">
+                                                <th style="padding:6px 4px; text-align:left; color:#9ca3af; font-weight:700;">Buy</th>
+                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">B.Val <span style="color:#10b981; font-size:0.65rem;">⇅</span></th>
+                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">B.Lot</th>
+                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">B.Freq</th>
+                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">B.Avg</th>
+                                                <th style="padding:6px 4px; text-align:left; color:#9ca3af; font-weight:700; padding-left:8px;">Sell</th>
+                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">S.Val <span style="color:#f43f5e; font-size:0.65rem;">⇅</span></th>
+                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">S.Lot</th>
+                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">S.Freq</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- populated dynamically by app.js -->
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Bandar Cost Analysis Profile -->
+                                <div class="broker-analysis-card mt-3" id="broker-analysis-card" style="border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; background: rgba(20, 33, 61, 0.25); font-family: Outfit; display:none; margin-top:0.75rem;">
+                                    <div style="font-size:0.7rem; color:#9ca3af; margin-bottom:6px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">👥 Bandar Accumulation & Cost Analysis</div>
+                                    <div style="display:flex; flex-direction:column; gap:4px; font-size:0.7rem;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                            <span style="color:#9ca3af;">Bandar Utama (Top Broker):</span>
+                                            <strong id="broker-analysis-code" style="font-weight:700;">-</strong>
+                                        </div>
+                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                            <span id="broker-analysis-date-label" style="color:#9ca3af;">Akumulasi Sejak:</span>
+                                            <strong id="broker-analysis-date" style="color:#ffffff; font-weight:600;">-</strong>
+                                        </div>
+                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                            <span style="color:#9ca3af;">Harga Rata-rata Bandar:</span>
+                                            <strong id="broker-analysis-avg" style="font-weight:700;">-</strong>
+                                        </div>
+                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                            <span style="color:#9ca3af;">Status Aliran:</span>
+                                            <strong id="broker-analysis-status" style="font-weight:700;">-</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-twothirds">
+                        <div class="card-header">
+                            <h3>Historical Price & Technical Bands</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="interactive-chart-wrapper">
+                                <canvas id="technicalChart"></canvas>
+                            </div>
+                            <div class="interactive-chart-wrapper mt-4" style="height: 150px;">
+                                <canvas id="rsiChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 6: ML SELF-LEARNING HUB -->
+            <section class="tab-content" id="tab-learning">
+                <div class="learning-grid">
+                    
+                    <!-- Self-Learning Module Control -->
+                    <div class="card card-full">
+                        <div class="card-header">
+                            <div class="header-left">
+                                <span class="card-badge" style="background: rgba(252, 163, 17, 0.15); color: var(--color-primary); border: 1px solid rgba(252, 163, 17, 0.25);">LEARNING ENGINE</span>
+                                <h3>Modul Koreksi Mandiri: Pembelajaran Umpan Balik (Error Feedback Loop)</h3>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-secondary font-sm">
+                                Modul ini mengimplementasikan siklus **Self-Learning / Continuous Calibration** di mana model membedah hasil realisasi T+1 yang gagal (False Positives) dan sukses (True Positives) pada hari sebelumnya, menghitung gradien kesalahan, lalu secara adaptif memperbarui bobot model serta toleransi batas sinyal untuk mencegah kesalahan serupa berulang.
+                            </p>
+                            <div class="flex-center mt-3 gap-3">
+                                <button class="btn btn-primary" id="run-learning-btn" style="background: var(--color-primary); color: #0a0f1d; font-weight: 700; border: none; padding: 0.65rem 1.5rem; border-radius: 6px; cursor: pointer;">
+                                    🧠 Jalankan Siklus Belajar Mandiri
+                                </button>
+                                <span class="text-muted font-xs">Status Engine: <strong style="color: var(--color-primary);" id="learning-engine-status">Ready to Learn</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Left: Why it failed & how it should be -->
+                    <div class="card card-half mt-4">
+                        <div class="card-header">
+                            <h3>🔍 Hindsight Error Diagnosis (Analisis Kegagalan Sinyal)</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="error-diagnosis-list" id="error-diagnosis-container" style="max-height: 350px; overflow-y: auto;">
+                                <div class="text-center py-4 text-muted">Belum ada proses pembelajaran yang dieksekusi. Klik tombol di atas untuk menganalisis kesalahan prediksi.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Model Adaptation Policy -->
+                    <div class="card card-half mt-4">
+                        <div class="card-header">
+                            <h3>⚙️ Model Adaptation Policy (Hasil Adaptasi & Koreksi)</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="adaptation-policy-list" id="adaptation-policy-container" style="max-height: 350px; overflow-y: auto;">
+                                <div class="text-center py-4 text-muted">Menunggu parameter adaptasi terbaru dari proses pembelajaran mandiri.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monospaced Learning Terminal Logs -->
+                    <div class="card card-full mt-4">
+                        <div class="card-header">
+                            <h3>📜 Live Self-Correction Training Logs</h3>
+                        </div>
+                        <div class="card-body bg-terminal p-3" style="background: rgba(10, 15, 29, 0.95); border: 1px solid var(--border-color); border-radius: 6px;">
+                            <div class="terminal-stdout font-mono" id="learning-stdout-container" style="color: #00ff66; height: 180px; overflow-y: auto; font-size: 0.8rem; line-height: 1.5;">
+                                [SYSTEM] Self-Learning Module inisialisasi berhasil. Menunggu perintah pembelajaran...
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- TAB 5: LIVE CONSOLE TERMINAL -->
+            <section class="tab-content" id="tab-console">
+                <div class="console-grid">
+                    <div class="card card-full">
+                        <div class="card-header">
+                            <div class="header-left flex-center gap-2">
+                                <span class="status-indicator-dot online" id="terminal-running-dot"></span>
+                                <h3>Pipeline Output Stream</h3>
+                            </div>
+                            <div class="header-right">
+                                <button class="btn btn-secondary btn-sm" id="clear-terminal-btn">Clear Output</button>
+                            </div>
+                        </div>
+                        <div class="card-body bg-terminal p-3">
+                            <div class="terminal-stdout" id="terminal-stdout-container">
+                                [SYSTEM] Terminal Dashboard diaktifkan. Menunggu eksekusi pipeline...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Script JS -->
+    <script src="/static/app.js"></script>
+</body>
+</html>

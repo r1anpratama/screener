@@ -18,7 +18,7 @@ import ta
 from config import (
     ROLLING_WINDOW_DAYS, BB_PERCENTILE_THRESHOLD, SMA_PERIOD,
     BB_PERIOD, BB_STD_DEV, RSI_PERIOD, RSI_OVERSOLD_THRESHOLD,
-    VWAP_RATIO_THRESHOLD, VMA_PERIOD
+    VWAP_RATIO_THRESHOLD, VMA_PERIOD, ATR_PERIOD
 )
 
 
@@ -254,6 +254,29 @@ class FeatureEngineer:
         
         return df
 
+    def calc_atr(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Menghitung Average True Range (ATR) untuk stop-loss dan take-profit dinamis.
+        """
+        result_frames = []
+
+        for ticker, group in df.groupby("ticker"):
+            group = group.copy().sort_values("date").reset_index(drop=True)
+
+            # Hitung True Range (TR)
+            high_low = group["high"] - group["low"]
+            high_close_prev = (group["high"] - group["close"].shift(1)).abs()
+            low_close_prev = (group["low"] - group["close"].shift(1)).abs()
+
+            tr = pd.concat([high_low, high_close_prev, low_close_prev], axis=1).max(axis=1)
+            group["atr"] = tr.rolling(window=ATR_PERIOD, min_periods=1).mean()
+            # Handle empty/NaN values at the beginning by filling with a small % of close
+            group["atr"] = group["atr"].fillna(group["close"] * 0.02)
+
+            result_frames.append(group)
+
+        return pd.concat(result_frames, ignore_index=True)
+
     def build_features(self, df_ohlcv: pd.DataFrame) -> pd.DataFrame:
         """
         Orkestrasi: jalankan semua kalkulasi fitur secara berurutan.
@@ -290,9 +313,13 @@ class FeatureEngineer:
         print("   -> Menghitung fitur IDX (Foreign Flow, Bid/Offer)...")
         df = self.calc_idx_features(df)
 
-        # 5. Stock Profiles (Untuk Clustering)
+        # 6. Stock Profiles (Untuk Clustering)
         print("   -> Membangun Profil Saham (Heterogeneity)...")
         df = self.calc_stock_profiles(df)
+
+        # 7. Average True Range (Untuk Stop Loss & Take Profit Dinamis)
+        print("   -> Menghitung Average True Range (ATR)...")
+        df = self.calc_atr(df)
 
         print("[OK] Feature Engineering selesai!\n")
         return df

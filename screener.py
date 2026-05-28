@@ -20,7 +20,7 @@ from data_ingestion import (
 )
 from idx_client import IDXClient
 from feature_engineering import FeatureEngineer
-from ml_model import T1ProbabilityModel
+from ml_model import T1ProbabilityModel, SelfLearningMetaFilter
 from config import MAX_DISPLAY_STOCKS, MIN_WIN_PROBABILITY
 
 
@@ -54,6 +54,7 @@ class StockScreener:
         """Inisialisasi pipeline screening."""
         self.feature_engineer = FeatureEngineer()
         self.model = T1ProbabilityModel()
+        self.meta_filter = SelfLearningMetaFilter()
         self.idx_client = IDXClient()
         self.df_ohlcv = None
         self.df_tick = None
@@ -149,24 +150,58 @@ class StockScreener:
 
         return metrics
 
+    def get_market_regime(self) -> str:
+        """
+        Mengecek tren jangka menengah IHSG (^JKSE) menggunakan SMA 50 hari.
+        Mengmengembalikan 'BULLISH' jika harga penutupan di atas SMA 50, dan 'BEARISH' jika di bawahnya.
+        """
+        print("[>] Menghitung tren market regime IHSG...")
+        try:
+            import yfinance as yf
+            df_ihsg = yf.download("^JKSE", period="1y", interval="1d", progress=False)
+            if isinstance(df_ihsg.columns, pd.MultiIndex):
+                df_ihsg.columns = df_ihsg.columns.get_level_values(0)
+            
+            df_ihsg = df_ihsg.dropna(subset=["Close"])
+            df_ihsg['sma_50'] = df_ihsg['Close'].rolling(50).mean()
+            
+            latest_close = float(df_ihsg['Close'].iloc[-1])
+            latest_sma_50 = float(df_ihsg['sma_50'].iloc[-1])
+            
+            self.ihsg_close = latest_close
+            self.ihsg_sma_50 = latest_sma_50
+            
+            if latest_close >= latest_sma_50:
+                print(f"   [IHSG] Close: {latest_close:,.2f} >= SMA 50: {latest_sma_50:,.2f} -> BULLISH REGIME")
+                self.market_regime = "BULLISH"
+            else:
+                print(f"   [IHSG] Close: {latest_close:,.2f} < SMA 50: {latest_sma_50:,.2f} -> BEARISH REGIME")
+                self.market_regime = "BEARISH"
+        except Exception as e:
+            print(f"   [!] Gagal mendownload data IHSG: {e}. Menggunakan default BULLISH.")
+            self.ihsg_close = 0.0
+            self.ihsg_sma_50 = 0.0
+            self.market_regime = "BULLISH"
+        return self.market_regime
+
     def predict_and_screen(self) -> pd.DataFrame:
         """
         Tahap 4: Prediksi probabilitas T+1 dan screening.
 
         Proses:
-        1. Ambil data HARI TERAKHIR (hari ini) untuk setiap saham
-        2. Prediksi probabilitas kenaikan menggunakan model
-        3. Filter HANYA saham dengan minimal 1 sinyal True
-        4. Urutkan berdasarkan win_probability (tertinggi ke terendah)
-
-        Returns
-        -------
-        pd.DataFrame
-            DataFrame hasil screening.
+        1. Hitung tren IHSG untuk market regime filter
+        2. Ambil data HARI TERAKHIR (hari ini) untuk setiap saham
+        3. Filter saham dengan likuiditas & volatilitas tinggi
+        4. Prediksi probabilitas kenaikan menggunakan model
+        5. Filter HANYA saham dengan minimal 1 sinyal True
+        6. Urutkan berdasarkan win_probability (tertinggi ke terendah)
         """
         print("=" * 60)
         print("[>] TAHAP 4: SCREENING & PREDIKSI T+1")
         print("=" * 60)
+
+        # Hitung tren IHSG untuk market regime filter
+        self.get_market_regime()
 
         # Ambil data hari terakhir (terbaru) per saham
         latest_date = self.df_features["date"].max()
@@ -175,19 +210,28 @@ class StockScreener:
         ].copy()
 
         print(f"   -> Tanggal screening: {latest_date.strftime('%Y-%m-%d')}")
-        print(f"   -> Jumlah saham dianalisis: {len(df_latest)}")
+        print(f"   -> Jumlah saham sebelum filter: {len(df_latest)}")
+
+        # --- PRE-FILTER: LIKUIDITAS & VOLATILITAS (BARU) ---
+        # Membatasi saham dengan rata-rata volume harian >= 1.000.000 dan volatilitas historis >= 2.5%
+        df_latest["unlogged_avg_volume"] = np.expm1(df_latest["avg_volume"])
+        df_latest = df_latest[
+            (df_latest["unlogged_avg_volume"] >= 1000000) & 
+            (df_latest["hist_volatility"] >= 0.025)
+        ].copy()
+        print(f"   -> Jumlah saham setelah filter likuiditas & volatilitas: {len(df_latest)}")
 
         # Prediksi probabilitas kenaikan T+1
-        df_latest = self.model.predict_proba(df_latest)
+        if not df_latest.empty:
+            df_latest = self.model.predict_proba(df_latest)
+        else:
+            print("   [!] Tidak ada saham yang lolos filter likuiditas & volatilitas.")
+            self.df_result = pd.DataFrame()
+            return self.df_result
 
         # ------------------------------------------------------------------
         # FILTER: Hanya saham dengan sinyal True dari indikator teknikal
         # ------------------------------------------------------------------
-        # Saham harus memenuhi MINIMAL SATU kondisi berikut:
-        # - Volatility Contraction = True
-        # - Momentum Extreme (RSI oversold) = True
-        # - Bandarmology (VWAP ratio > 1) = True
-        # - Pre-Closing Anomaly = True
         signal_columns = [
             "signal_volatility_contraction",
             "signal_momentum_extreme",
@@ -202,10 +246,35 @@ class StockScreener:
         # Filter: minimal 1 sinyal aktif
         df_screened = df_latest[df_latest["total_signals"] >= 1].copy()
 
+        # FILTER MANDATORI (BANDARMOLOGY): Hanya masukkan saham yang sedang diakumulasi oleh bandar (tidak didistribusi)
+        df_screened = df_screened[df_screened["signal_bandarmology"] == True].copy()
+
         # Filter: probabilitas minimum
         df_screened = df_screened[
             df_screened["win_probability"] >= MIN_WIN_PROBABILITY
         ]
+
+        # --- SELF-LEARNING META-FILTER CORRECTION (BARU) ---
+        if self.meta_filter.is_trained:
+            print("   [META-FILTER] Menerapkan koreksi adaptif dari ML Self-Learning Hub...")
+            meta_scores = []
+            for _, row in df_screened.iterrows():
+                score = self.meta_filter.predict_correction_score(row)
+                meta_scores.append(score)
+            df_screened["meta_filter_score"] = meta_scores
+            
+            # Terapkan koreksi: jika safety score < 0.45, potong win_probability drastis!
+            # Dan sesuaikan win_probability secara halus jika di atas 0.45.
+            for idx, row in df_screened.iterrows():
+                score = row["meta_filter_score"]
+                if score < 0.45:
+                    print(f"      [META-FILTER] Saham {row['ticker']} ditolak oleh Meta-Filter (Skor Keselamatan: {score:.1%})!")
+                    df_screened.at[idx, "win_probability"] = row["win_probability"] * 0.1
+                else:
+                    df_screened.at[idx, "win_probability"] = row["win_probability"] * (0.6 + 0.4 * score)
+            
+            # Filter ulang berdasarkan win_probability setelah koreksi
+            df_screened = df_screened[df_screened["win_probability"] >= MIN_WIN_PROBABILITY].copy()
 
         # Urutkan berdasarkan win_probability (tertinggi dulu)
         df_screened.sort_values("win_probability", ascending=False, inplace=True)
@@ -214,9 +283,15 @@ class StockScreener:
         # Batasi jumlah tampilan
         df_screened = df_screened.head(MAX_DISPLAY_STOCKS)
 
+        # --- OPTIMASI ALOKASI PORTFOLIO KELLY CRITERION (BARU) ---
+        print("   -> Menghitung alokasi portofolio optimal (Kelly)...")
+        from portfolio_optimizer import PortfolioOptimizer
+        optimizer = PortfolioOptimizer()
+        df_screened = optimizer.optimize_allocations(df_screened, market_regime=self.market_regime)
+
         self.df_result = df_screened
 
-        print(f"   -> Saham yang lolos filter: {len(df_screened)}")
+        print(f"   -> Saham yang lolos filter & teroptimasi: {len(df_screened)}")
         print()
 
         return df_screened
@@ -242,6 +317,10 @@ class StockScreener:
             "close",
             "volume",
             "win_probability",
+            "profit_score",
+            "kelly_pct",
+            "stop_loss",
+            "take_profit",
             "cluster_id",
             "rsi_14",
             "vwap_ratio",
@@ -262,15 +341,31 @@ class StockScreener:
         # Format angka
         if "close" in df_display.columns:
             df_display["close"] = df_display["close"].apply(
-                lambda x: f"Rp {x:,.0f}"
+                lambda x: f"Rp {x:,.0f}" if isinstance(x, (int, float)) else str(x)
             )
         if "volume" in df_display.columns:
             df_display["volume"] = df_display["volume"].apply(
-                lambda x: f"{x:,.0f}"
+                lambda x: f"{x:,.0f}" if isinstance(x, (int, float)) else str(x)
             )
         if "win_probability" in df_display.columns:
             df_display["win_probability"] = df_display["win_probability"].apply(
-                lambda x: f"{x:.1f}%"
+                lambda x: f"{x:.1f}%" if isinstance(x, (int, float)) else str(x)
+            )
+        if "profit_score" in df_display.columns:
+            df_display["profit_score"] = df_display["profit_score"].apply(
+                lambda x: f"{x:.1f}" if isinstance(x, (int, float)) else str(x)
+            )
+        if "kelly_pct" in df_display.columns:
+            df_display["kelly_pct"] = df_display["kelly_pct"].apply(
+                lambda x: f"{x:.2f}%" if isinstance(x, (int, float)) else str(x)
+            )
+        if "stop_loss" in df_display.columns:
+            df_display["stop_loss"] = df_display["stop_loss"].apply(
+                lambda x: f"Rp {x:,.0f}" if isinstance(x, (int, float)) else str(x)
+            )
+        if "take_profit" in df_display.columns:
+            df_display["take_profit"] = df_display["take_profit"].apply(
+                lambda x: f"Rp {x:,.0f}" if isinstance(x, (int, float)) else str(x)
             )
         if "rsi_14" in df_display.columns:
             df_display["rsi_14"] = df_display["rsi_14"].round(1)
@@ -295,6 +390,10 @@ class StockScreener:
             "close": "Harga",
             "volume": "Volume",
             "win_probability": "Prob. T+1",
+            "profit_score": "Skor Profit",
+            "kelly_pct": "Alokasi Kelly",
+            "stop_loss": "Stop Loss",
+            "take_profit": "Take Profit",
             "cluster_id": "Cluster",
             "rsi_14": "RSI(14)",
             "bb_bandwidth": "BB Width",

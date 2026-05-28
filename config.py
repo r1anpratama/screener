@@ -201,3 +201,29 @@ MAX_DISPLAY_STOCKS = 10
 
 # Minimum probabilitas win untuk ditampilkan (dalam persen)
 MIN_WIN_PROBABILITY = 0.0  # Tampilkan semua yang lolos filter sinyal
+
+
+# =============================================================================
+# PARAMETER HIGH-PROFIT & KELLY PORTFOLIO OPTIMIZATION (BARU)
+# =============================================================================
+
+# Kelly Fraction (0.5 = Half-Kelly untuk mengurangi volatilitas drawdown)
+KELLY_FRACTION = 0.5
+
+# Periode default ATR untuk perhitungan stop-loss/take-profit
+ATR_PERIOD = 14
+
+# Multiplier ATR untuk Stop Loss (SL) dan Take Profit (TP)
+SL_ATR_MULTIPLIER = 1.5
+TP_ATR_MULTIPLIER = 3.0
+
+# Trailing Stop Multiplier (untuk mengunci keuntungan)
+TRAILING_STOP_ATR_MULTIPLIER = 2.0
+
+
+# =============================================================================
+# KONFIGURASI WEB SERVER
+# =============================================================================
+WEB_HOST = "127.0.0.1"
+WEB_PORT = 8000
+
