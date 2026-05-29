@@ -38,9 +38,9 @@ Memperbaiki bug keterbacaan select option bawaan browser.
 * **Self-Learning Meta-Filter Loop**: Menyediakan antarmuka pelatihan ulang Neural Network meta-learner untuk membedah hasil realisasi T+1 yang gagal (False Positives) dan sukses (True Positives) guna mengompensasi bias algoritma di hari berikutnya.
 
 ### 6. 🛡️ Kelly Criterion Position Sizing & ATR Risk Control
-* **Optimasi Portofolio Kelly Criterion**: Menghitung alokasi modal optimal ($f^*$) per picks saham secara kuantitatif guna memaksimalkan laju pertumbuhan modal geometris jangka panjang:
-  $$f^* = \text{Half-Kelly} \times \frac{p \cdot R - (1 - p)}{R}$$
-* **ATR stops & Trailing SL**: Menghitung stop-loss dinamis ($1.5 \times \text{ATR}$) dan take-profit ($3 \times \text{ATR}$) berbasis volatilitas Average True Range 14 hari, dilengkapi pelacakan Trailing Stop ($2 \times \text{ATR}$) untuk mengejar gelombang breakout yang panjang.
+* **Optimasi Portofolio Kelly Criterion**: Menghitung alokasi modal optimal (f*) per picks saham secara kuantitatif guna memaksimalkan laju pertumbuhan modal geometris jangka panjang:
+  Formula Kelly: f* = Half-Kelly x [ (p x R - (1 - p)) / R ]
+* **ATR stops & Trailing SL**: Menghitung stop-loss dinamis (1.5 x ATR) dan take-profit (3 x ATR) berbasis volatilitas Average True Range 14 hari, dilengkapi pelacakan Trailing Stop (2 x ATR) untuk mengejar gelombang breakout yang panjang.
 
 ---
 
