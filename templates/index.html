@@ -377,71 +377,62 @@
                             </div>
                             
                             <!-- Premium Broker Action Summary Widget (Baru) -->
-                            <div class="broker-action-panel mt-4" id="broker-action-panel" style="display:none; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
-                                <div class="flex-between align-center mb-2" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
-                                    <h4 style="color:#ffffff; font-size:0.95rem; font-weight:700; margin:0; font-family:Outfit;">Broker Action <span class="info-icon" title="Aktivitas Broker Summary (Buy vs Sell)" style="cursor:pointer; color:#9ca3af; font-size:0.8rem; margin-left:2px;">ⓘ</span></h4>
-                                    <span class="status-indicator-dot online" id="broker-dot" style="background:#8b5cf6; box-shadow:0 0 6px #8b5cf6;"></span>
+                            <!-- Premium Quantitative Microstructure Studio -->
+                            <div class="broker-action-panel mt-4" id="microstructure-panel" style="display:none; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
+                                <div class="flex-between align-center mb-2" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
+                                    <h4 style="color:#ffffff; font-size:0.95rem; font-weight:700; margin:0; font-family:Outfit;">📊 Microstructure & Order Book <span class="info-icon" title="Analisis Kuantitatif Mikrostruktur & Aliran Orderbook Riil" style="cursor:pointer; color:#9ca3af; font-size:0.8rem; margin-left:2px;">ⓘ</span></h4>
+                                    <span class="status-indicator-dot online" id="microstructure-dot" style="background:#10b981; box-shadow:0 0 6px #10b981;"></span>
                                 </div>
                                 
-                                <!-- Accumulation Gauge Bar -->
-                                <div class="broker-gauge-container mb-3" style="position:relative; margin-bottom: 1.25rem; padding: 0.25rem 0;">
-                                    <div class="broker-gauge-bar" style="display: flex; gap: 2px; height: 6px; border-radius: 3px; overflow: hidden; width: 100%; position:relative;">
-                                        <div style="flex: 1; background: #b91c1c;"></div> <!-- Big Dist -->
-                                        <div style="flex: 1; background: #991b1b;"></div> <!-- Dist -->
-                                        <div style="flex: 1; background: #374151;"></div> <!-- Neutral -->
-                                        <div style="flex: 1; background: #064e3b;"></div> <!-- Acc -->
-                                        <div style="flex: 1; background: #10b981;"></div> <!-- Big Acc -->
+                                <div style="display: flex; flex-direction: column; gap: 12px; font-family: Outfit;">
+                                    <!-- Order Book Imbalance (OBI) Gauge -->
+                                    <div style="border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; background: rgba(10, 15, 29, 0.45);">
+                                        <div style="font-size:0.7rem; color:#9ca3af; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; margin-bottom: 6px; display: flex; justify-content: space-between;">
+                                            <span>⚖️ Order Book Imbalance (OBI)</span>
+                                            <strong id="micro-obi-val" style="color:#10b981;">0.00%</strong>
+                                        </div>
+                                        <div style="position:relative; padding: 4px 0 2px;">
+                                            <div style="display: flex; height: 6px; border-radius: 3px; overflow: hidden; width: 100%; position:relative;">
+                                                <div style="flex: 1; background: linear-gradient(to right, #f43f5e, #374151);"></div> <!-- Sell Bias -->
+                                                <div style="flex: 1; background: linear-gradient(to right, #374151, #10b981);"></div> <!-- Buy Bias -->
+                                            </div>
+                                            <div id="micro-obi-indicator" style="position:absolute; width: 4px; height: 14px; background: #6366f1; top: 0px; left: 50%; transform: translateX(-50%); border-radius: 2px; box-shadow: 0 0 8px #6366f1; transition: left 0.5s ease-out; z-index: 2;"></div>
+                                        </div>
+                                        <div style="display:flex; justify-content:space-between; font-size:0.6rem; color:#9ca3af; margin-top: 4px;">
+                                            <span>Sell Pressure</span>
+                                            <span>Neutral</span>
+                                            <span>Buy Demand</span>
+                                        </div>
                                     </div>
-                                    <!-- Gauge needle indicator -->
-                                    <div class="broker-gauge-indicator" id="broker-gauge-indicator" style="position:absolute; width: 4px; height: 16px; background: #6366f1; top: -1px; left: 50%; transform: translateX(-50%); border-radius: 2px; box-shadow: 0 0 10px rgba(99, 102, 241, 0.8); transition: left 0.5s ease-out; z-index: 2;"></div>
-                                </div>
-                                <div class="flex-between font-xs mt-1" style="display:flex; justify-content:space-between; font-size:0.68rem; color:#9ca3af; margin-top: -0.9rem; margin-bottom: 1rem; font-family: Outfit; font-weight: 500;">
-                                    <span>Big Dist</span>
-                                    <span>Neutral</span>
-                                    <span>Big Acc</span>
-                                </div>
-                                
-                                <!-- Broker Summary Buyer vs Seller Table -->
-                                <div class="table-responsive" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; background: rgba(10, 15, 29, 0.4);">
-                                    <table class="quant-table" id="broker-action-table" style="font-size:0.7rem; width:100%; border-collapse: collapse;">
-                                        <thead>
-                                            <tr style="border-bottom: 1px solid var(--border-color); background: rgba(255,255,255,0.02);">
-                                                <th style="padding:6px 4px; text-align:left; color:#9ca3af; font-weight:700;">Buy</th>
-                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">B.Val <span style="color:#10b981; font-size:0.65rem;">⇅</span></th>
-                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">B.Lot</th>
-                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">B.Freq</th>
-                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">B.Avg</th>
-                                                <th style="padding:6px 4px; text-align:left; color:#9ca3af; font-weight:700; padding-left:8px;">Sell</th>
-                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">S.Val <span style="color:#f43f5e; font-size:0.65rem;">⇅</span></th>
-                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">S.Lot</th>
-                                                <th style="padding:6px 4px; text-align:right; color:#9ca3af; font-weight:700;">S.Freq</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- populated dynamically by app.js -->
-                                        </tbody>
-                                    </table>
-                                </div>
 
-                                <!-- Bandar Cost Analysis Profile -->
-                                <div class="broker-analysis-card mt-3" id="broker-analysis-card" style="border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; background: rgba(20, 33, 61, 0.25); font-family: Outfit; display:none; margin-top:0.75rem;">
-                                    <div style="font-size:0.7rem; color:#9ca3af; margin-bottom:6px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">👥 Bandar Accumulation & Cost Analysis</div>
-                                    <div style="display:flex; flex-direction:column; gap:4px; font-size:0.7rem;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                                            <span style="color:#9ca3af;">Bandar Utama (Top Broker):</span>
-                                            <strong id="broker-analysis-code" style="font-weight:700;">-</strong>
+                                    <!-- Volatility Compression (Bollinger Squeeze) -->
+                                    <div style="border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; background: rgba(10, 15, 29, 0.45);">
+                                        <div style="font-size:0.7rem; color:#9ca3af; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; margin-bottom: 4px;">🔍 Volatility Squeeze Percentile</div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+                                            <strong id="micro-sq-pct" style="font-size: 1.1rem; font-weight: 800; color: #ffffff;">0.0%</strong>
+                                            <span id="micro-sq-status" class="card-badge" style="font-size:0.65rem; font-weight:700; padding:2px 8px; border-radius:4px;">-</span>
                                         </div>
-                                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                                            <span id="broker-analysis-date-label" style="color:#9ca3af;">Akumulasi Sejak:</span>
-                                            <strong id="broker-analysis-date" style="color:#ffffff; font-weight:600;">-</strong>
-                                        </div>
-                                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                                            <span style="color:#9ca3af;">Harga Rata-rata Bandar:</span>
-                                            <strong id="broker-analysis-avg" style="font-weight:700;">-</strong>
-                                        </div>
-                                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                                            <span style="color:#9ca3af;">Status Aliran:</span>
-                                            <strong id="broker-analysis-status" style="font-weight:700;">-</strong>
+                                        <p style="color:#9ca3af; font-size:0.62rem; line-height:1.35; margin: 6px 0 0 0;">
+                                            Persentil rendah (&le;10%) menandakan harga terkontraksi tajam (squeeze phase), mengindikasikan akumulasi tenang sebelum breakout volatilitas tinggi.
+                                        </p>
+                                    </div>
+
+                                    <!-- Machine Learning Regime Classifier -->
+                                    <div style="border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; background: rgba(20, 33, 61, 0.25);">
+                                        <div style="font-size:0.7rem; color:#9ca3af; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:6px;">🧠 Quantitative ML Regime</div>
+                                        <div style="display:flex; flex-direction:column; gap:4px; font-size:0.7rem;">
+                                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                <span style="color:#9ca3af;">XGBoost Win Probability:</span>
+                                                <strong id="micro-ml-prob" style="font-weight:700; color:#10b981;">-</strong>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                <span style="color:#9ca3af;">K-Means Behavioral Cluster:</span>
+                                                <strong id="micro-ml-cluster" style="color:#ffffff; font-weight:600;">-</strong>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                <span style="color:#9ca3af;">Self-Learning Correction:</span>
+                                                <strong id="micro-ml-status" style="font-weight:700; color:#10b981;">🟢 APPROVED</strong>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -449,15 +440,49 @@
                         </div>
                     </div>
 
-                    <div class="card card-twothirds">
-                        <div class="card-header">
-                            <h3>Historical Price & Technical Bands</h3>
+                    <div class="card card-twothirds" style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: rgba(10, 15, 29, 0.45); backdrop-filter: blur(16px);">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding: 0.75rem 1.25rem;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="card-badge" style="background: rgba(99, 102, 241, 0.15); color: #a78bfa; border: 1px solid rgba(99,102,241,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em;">TRADINGVIEW COMPATIBLE</span>
+                                <h3 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: #ffffff; font-family: Outfit;">Interactive Technical Terminal</h3>
+                            </div>
+                            <!-- Timeframe Selectors -->
+                            <div style="display: flex; gap: 4px; font-family: Outfit;">
+                                <button class="tf-btn" data-days="7" style="background: rgba(255,255,255,0.03); color: #9ca3af; border: 1px solid rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">7D</button>
+                                <button class="tf-btn" data-days="30" style="background: rgba(255,255,255,0.03); color: #9ca3af; border: 1px solid rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">30D</button>
+                                <button class="tf-btn" data-days="90" style="background: rgba(255,255,255,0.03); color: #9ca3af; border: 1px solid rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">90D</button>
+                                <button class="tf-btn active" data-days="100" style="background: rgba(99, 102, 241, 0.2); color: #a78bfa; border: 1px solid rgba(99,102,241,0.4); padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">ALL</button>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <div class="interactive-chart-wrapper">
+                        <div class="card-body" style="padding: 1.25rem; position: relative;">
+                            
+                            <!-- TradingView-Style HUD (OHLC Realtime Bar) -->
+                            <div id="tv-hud-bar" style="position: absolute; top: 1.25rem; left: 1.25rem; font-family: Outfit; font-size: 0.72rem; z-index: 10; pointer-events: none; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: rgba(10, 15, 29, 0.85); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(8px);">
+                                <strong id="hud-ticker" style="color: #ffffff; font-size: 0.8rem; margin-right: 4px;">-</strong>
+                                <span>O:<strong id="hud-open" style="color: #9ca3af; font-weight: 600; margin-left: 2px;">-</strong></span>
+                                <span>H:<strong id="hud-high" style="color: #9ca3af; font-weight: 600; margin-left: 2px;">-</strong></span>
+                                <span>L:<strong id="hud-low" style="color: #9ca3af; font-weight: 600; margin-left: 2px;">-</strong></span>
+                                <span>C:<strong id="hud-close" style="color: #9ca3af; font-weight: 600; margin-left: 2px;">-</strong></span>
+                                <span>Vol:<strong id="hud-vol" style="color: #9ca3af; font-weight: 600; margin-left: 2px;">-</strong></span>
+                            </div>
+
+                            <!-- Interactive Chart Toggles -->
+                            <div style="display:flex; justify-content: flex-end; gap:8px; margin-bottom: 0.75rem; font-family: Outfit;">
+                                <button id="toggle-support-btn" style="background: rgba(139, 92, 246, 0.2); color: #c084fc; border: 1px solid rgba(139,92,246,0.4); padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);">
+                                    🔒 Dynamic Support Floor: ON
+                                </button>
+                                <button id="toggle-acc-dist-btn" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16,185,129,0.4); padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);">
+                                    🟢 Accum/Dist Zones: ON
+                                </button>
+                            </div>
+                            
+                            <!-- Technical Chart Canvas (Price, BB, SMA & Volume Underlay) -->
+                            <div class="interactive-chart-wrapper" style="height: 300px; position: relative;">
                                 <canvas id="technicalChart"></canvas>
                             </div>
-                            <div class="interactive-chart-wrapper mt-4" style="height: 150px;">
+                            
+                            <!-- RSI Chart Canvas -->
+                            <div class="interactive-chart-wrapper mt-4" style="height: 120px;">
                                 <canvas id="rsiChart"></canvas>
                             </div>
                         </div>

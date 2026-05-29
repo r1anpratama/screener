@@ -507,6 +507,11 @@ h1, h2, h3, h4, h5, h6 {
     transition: var(--transition-smooth);
 }
 
+.form-control option {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+}
+
 .form-control:focus {
     outline: none;
     border-color: var(--color-primary);

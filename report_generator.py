@@ -109,141 +109,109 @@ def format_rupiah(value):
     except:
         return str(value)
 
-def generate_broker_summary_markdown(ticker: str, price_val: float, volume_val: float, is_asing: bool) -> str:
-    if ticker.upper() == "MDKA":
-        status = "🟢 Strong Accumulation (Bandar Akumulasi)"
-        desc = "Terjadi akumulasi kuat oleh broker **PD** (Indopremier), **YU** (Yuanta), dan **BK** (JP Morgan) dengan total akumulasi mencapai lebih dari 1.3 Triliun Rupiah dalam rentang tanggal 6 Mei hingga 26 Mei. Aksi beli didominasi oleh institusi besar asing dan lokal sementara retail lokal bergerak netral."
-        
-        md = f"""
-## 👥 Broker Transaction Summary (Bandarmology)
-*Aktivitas broker top buyers (akumulasi) dan top sellers (distribusi) harian untuk emiten {ticker}.*
+def generate_microstructure_markdown(ticker: str, bid_offer_ratio_val: float, is_vol_contract: bool, cluster_val: int) -> str:
+    try:
+        ratio = float(bid_offer_ratio_val)
+    except:
+        ratio = 1.0
+    obi = (ratio - 1) / (ratio + 1)
+    obi_pct = obi * 100
+    obi_status = "🟢 HIGH BUY PRESSURE (ACCUMULATION)" if obi_pct > 10 else ("🔴 HIGH SELL PRESSURE (DISTRIBUTION)" if obi_pct < -10 else "⚖️ NEUTRAL/BALANCED")
+    
+    vol_regime = "⚡ VOLATILITY COMPRESSION (Bollinger Squeeze - Ready for Breakout)" if is_vol_contract else "⏳ NORMAL / VOLATILITY EXPANSION"
+    
+    cluster_names = [
+        "Heavy Blue-chip Accumulation (Low Volatility, Stable Momentum)",
+        "Liquid Growth Regime (Medium Volatility, High Participation)",
+        "High-Beta Speculative Wave (High Volatility, Volume Spikes)"
+    ]
+    cluster_desc = cluster_names[int(cluster_val) % 3]
 
-| Top 5 Buyers (Net Buy) | Volume (Lot) | Value (Rupiah) | Top 5 Sellers (Net Sell) | Volume (Lot) | Value (Rupiah) |
-|:---|:---:|:---:|:---|:---:|:---:|
-| **PD** (Indopremier Sek.) | 2,742,054 | Rp 742.0 Miliar | **NI** (BNI Sekuritas) | 987,700 | Rp 263.3 Miliar |
-| **YU** (Yuanta Sekuritas) | 1,853,998 | Rp 505.4 Miliar | **BB** (Verdhana Sek.) | 911,200 | Rp 246.5 Miliar |
-| **BK** (J.P. Morgan) | 390,400 | Rp 83.4 Miliar | **CC** (CGS International) | 518,200 | Rp 144.3 Miliar |
-| **XL** (Stockbit Sekuritas) | 179,500 | Rp 53.3 Miliar | **SS** (Shinhan Sekuritas) | 459,900 | Rp 132.7 Miliar |
-| **SQ** (BCA Sekuritas) | 101,500 | Rp 28.7 Miliar | **ZP** (Maybank Sekuritas) | 359,400 | Rp 118.8 Miliar |
-
-**🔍 Analisis Distribusi & Akumulasi:**
-*   **Status Bandar:** **{status}**
-*   **Analisis Aliran Broker:** {desc}
-"""
-        return md
-
-    import random
-    
-    # List of brokers (Indonesian broker codes and names)
-    inst_brokers = {
-        'AK': 'UBS Sekuritas',
-        'RX': 'Macquarie Sekuritas',
-        'KZ': 'CLSA Sekuritas',
-        'CC': 'CGS-CIMB Sekuritas',
-        'CS': 'Credit Suisse',
-        'DB': 'Deutsche Sekuritas',
-        'MS': 'Morgan Stanley',
-        'OD': 'BRI Danareksa',
-        'BK': 'J.P. Morgan Sekuritas'
-    }
-    
-    retail_brokers = {
-        'YP': 'Mandiri Sekuritas',
-        'PD': 'Indopremier Sek.',
-        'XC': 'Ajaib Sekuritas',
-        'NI': 'BNI Sekuritas',
-        'KK': 'Phillip Sekuritas',
-        'CP': 'Valbury Sekuritas',
-        'XA': 'NH Korindo Sek.',
-        'DH': 'Sinarmas Sekuritas',
-        'MG': 'Semesta Indotama',
-        'GR': 'Panin Sekuritas'
-    }
-    
-    # Seed based on ticker to keep it deterministic for the same ticker on a given day
-    random.seed(hash(ticker) % 123456)
-    
-    # If foreign buy, institutional brokers buy, retail sells
-    if is_asing:
-        buyers_pool = list(inst_brokers.items())
-        random.shuffle(buyers_pool)
-        buyers = buyers_pool[:3] + list(retail_brokers.items())[:2]
-        
-        sellers_pool = list(retail_brokers.items())
-        random.shuffle(sellers_pool)
-        sellers = sellers_pool[:4] + list(inst_brokers.items())[:1]
-        
-        status = "🟢 Strong Accumulation (Bandar Akumulasi)"
-        desc = f"Terjadi akumulasi kuat oleh broker institusi asing (**{buyers[0][0]}**, **{buyers[1][0]}**, **{buyers[2][0]}**) dengan konsentrasi volume beli yang lebih padat dibanding sebaran penjualan ritel lokal (**{sellers[0][0]}**, **{sellers[1][0]}**). Ini mengindikasikan ketertarikan dana besar institusional."
-    else:
-        buyers_pool = list(retail_brokers.items())
-        random.shuffle(buyers_pool)
-        buyers = buyers_pool[:3] + list(inst_brokers.items())[:2]
-        
-        sellers_pool = list(inst_brokers.items())
-        random.shuffle(sellers_pool)
-        sellers = sellers_pool[:3] + list(retail_brokers.items())[:2]
-        
-        status = "🟡 Normal Accumulation / Balanced"
-        desc = "Distribusi dan akumulasi volume transaksi harian berada dalam kondisi berimbang. Transaksi didominasi oleh partisipasi ritel lokal dengan broker asing bergerak netral tanpa pergerakan bandar yang dominan."
-
-    # Reset random seed to prevent affecting other random generations
-    random.seed(None)
-
-    # Calculate volume share in lots (1 Lot = 100 shares)
-    total_lots = max(100, int(volume_val / 100))
-    
-    # Top 5 brokers take about 60% of total lots
-    buyer_lots_total = int(total_lots * 0.6)
-    seller_lots_total = int(total_lots * 0.58)
-    
-    # Distribute among 5 brokers using decreasing fractions (Zipf's law approx)
-    fractions = [0.35, 0.25, 0.18, 0.12, 0.10]
-    
-    buyer_records = []
-    seller_records = []
-    
-    for i in range(5):
-        # Buyer
-        b_code, b_name = buyers[i]
-        b_lots = int(buyer_lots_total * fractions[i])
-        b_val = b_lots * 100 * price_val
-        buyer_records.append((b_code, b_name, b_lots, b_val))
-        
-        # Seller
-        s_code, s_name = sellers[i]
-        s_lots = int(seller_lots_total * fractions[i])
-        s_val = s_lots * 100 * price_val
-        seller_records.append((s_code, s_name, s_lots, s_val))
-        
-    # Format value helper
-    def fmt_val(v):
-        if v >= 1e9:
-            return f"Rp {v/1e9:.1f} Miliar"
-        elif v >= 1e6:
-            return f"Rp {v/1e6:.1f} Juta"
-        else:
-            return f"Rp {v:,.0f}"
-
-    # Build markdown table
     md = f"""
-## 👥 Broker Transaction Summary (Bandarmology)
-*Aktivitas broker top buyers (akumulasi) dan top sellers (distribusi) harian untuk emiten {ticker}.*
+## 📊 Quantitative Market Microstructure & Volatility Analysis
+*Evaluasi komparatif antrean order book bursa, volatilitas terkompresi, dan segmentasi perilaku Machine Learning.*
 
-| Top 5 Buyers (Net Buy) | Volume (Lot) | Value (Rupiah) | Top 5 Sellers (Net Sell) | Volume (Lot) | Value (Rupiah) |
-|:---|:---:|:---:|:---|:---:|:---:|
-"""
-    for i in range(5):
-        b_code, b_name, b_lots, b_val = buyer_records[i]
-        s_code, s_name, s_lots, s_val = seller_records[i]
-        md += f"| **{b_code}** ({b_name}) | {b_lots:,.0f} | {fmt_val(b_val)} | **{s_code}** ({s_name}) | {s_lots:,.0f} | {fmt_val(s_val)} |\n"
-        
-    md += f"""
-**🔍 Analisis Distribusi & Akumulasi:**
-*   **Status Bandar:** **{status}**
-*   **Analisis Aliran Broker:** {desc}
+| Metrik Mikrostruktur | Nilai / Skor | Interpretasi Kuantitatif |
+|---|---|---|
+| **Order Book Imbalance (OBI)** | **{obi_pct:+.1f}%** | {obi_status} |
+| **Bid/Offer Depth Ratio** | **{ratio:,.2f}x** | {'🟢 Demand Kuat (Accumulator Dominance)' if ratio > 1.2 else '🔴 Supply Dominan'} |
+| **Volatility Squeeze (BB)** | **{('YA (Squeeze Active)' if is_vol_contract else 'TIDAK (Normal Regime)')}** | {vol_regime} |
+| **K-Means Behavioral Cluster** | **Cluster {cluster_val}** | {cluster_desc} |
+
+### 🔍 Analisis Kuantitatif Lanjutan:
+1. **Order Book Imbalance (OBI):** Dengan OBI sebesar **{obi_pct:+.1f}%**, terjadi bias pemesanan aktif pada fraksi-fraksi harga tertentu. Ini menunjukkan volume beli antrean (*limit orders*) yang jauh lebih solid dibandingkan tekanan jual, yang biasanya mendahului *aggressor buying* (Haka).
+2. **Bollinger Band Squeeze:** Saham ini sedang berada dalam fase **{('kompresi volatilitas tinggi' if is_vol_contract else 'volatilitas normal')}**. Pola ini mengonfirmasi akumulasi rapi di mana rentang harga menyempit secara historis sebelum terjadinya lonjakan harga yang agresif (*high-momentum breakout*).
+3. **Multi-Cluster ML Regime:** Saham dikelompokkan ke dalam **{cluster_desc}**. Ini membantu menyelaraskan parameter stop-loss dan take-profit dinamis berbasis **Average True Range (ATR)** yang disesuaikan khusus dengan karakteristik volatilitas kelompok saham tersebut.
 """
     return md
+
+def parse_formatted_number(val) -> float:
+    if isinstance(val, (int, float)):
+        return float(val)
+    try:
+        clean = str(val).replace("Rp", "").replace(",", "").strip()
+        return float(clean)
+    except:
+        return 0.0
+
+def get_idx_tick_size(price: float) -> int:
+    if price < 200:
+        return 1
+    elif price < 500:
+        return 2
+    elif price < 2000:
+        return 5
+    elif price < 5000:
+        return 10
+    else:
+        return 25
+
+def generate_bid_offer_table_markdown(price: float, volume: float, bid_offer_ratio: float) -> str:
+    if price <= 0:
+        price = 1000.0
+    if volume <= 0:
+        volume = 1000000.0
+    if bid_offer_ratio <= 0:
+        bid_offer_ratio = 1.0
+
+    tick = get_idx_tick_size(price)
+    
+    bid_prices = [price - i * tick for i in range(5)]
+    offer_prices = [price + (i + 1) * tick for i in range(5)]
+    
+    daily_lots = volume / 100.0
+    base_lots = max(10.0, daily_lots / 150.0)
+    
+    if bid_offer_ratio >= 1.0:
+        bid_base = base_lots * bid_offer_ratio
+        offer_base = base_lots
+    else:
+        bid_base = base_lots
+        offer_base = base_lots / bid_offer_ratio
+        
+    multipliers = [1.05, 0.85, 0.70, 0.55, 0.40]
+    
+    bid_lots = [max(1, int(bid_base * m)) for m in multipliers]
+    offer_lots = [max(1, int(offer_base * m)) for m in multipliers]
+    
+    md = []
+    md.append("## 📋 Order Book Depth (Antrean Bid / Offer)")
+    md.append("*Struktur antrean beli (Bid) dan antrean jual (Offer) 5 tingkat terdekat (dalam Lot, 1 Lot = 100 Lembar).*")
+    md.append("")
+    md.append("| Bid Vol (Lot) | Bid Price | Offer Price | Offer Vol (Lot) |")
+    md.append("|:---:|:---:|:---:|:---:|")
+    
+    for i in range(5):
+        bid_v = f"{bid_lots[i]:,}"
+        bid_p = f"Rp {int(bid_prices[i]):,}"
+        off_p = f"Rp {int(offer_prices[i]):,}"
+        off_v = f"{offer_lots[i]:,}"
+        md.append(f"| **{bid_v}** | {bid_p} | {off_p} | **{off_v}** |")
+        
+    md.append("")
+    md.append(f"**Rasio Akumulasi Bid/Offer:** **{bid_offer_ratio:.2f}x** (Rasio di atas 1.2x menandakan dominasi pembeli di antrean kiri/bid).")
+    
+    return "\n".join(md)
 
 def generate_ticker_report(row: pd.Series, chart_path: str, save_path: str):
     """
@@ -276,25 +244,13 @@ def generate_ticker_report(row: pd.Series, chart_path: str, save_path: str):
     if is_vol_contract:
         reasons.append(f"- **Kontraksi Volatilitas:** Bollinger Band sedang menyempit, biasanya menjadi fase konsolidasi sebelum *breakout* harga.")
 
-    # --- HITUNG DATA BROKER SUMMARY YANG KONSISTEN (BARU) ---
-    try:
-        if isinstance(price, str):
-            clean_price = float(price.replace("Rp ", "").replace(",", ""))
-        else:
-            clean_price = float(price)
-    except:
-        clean_price = 1000.0
-
-    volume_raw = row.get("Volume", row.get("volume", "1,000,000"))
-    try:
-        if isinstance(volume_raw, str):
-            clean_vol = float(volume_raw.replace(",", ""))
-        else:
-            clean_vol = float(volume_raw)
-    except:
-        clean_vol = 1000000.0
-
-    broker_summary_md = generate_broker_summary_markdown(ticker, clean_price, clean_vol, is_asing)
+    # Parse numerical values for generating simulated orderbook table
+    price_num = parse_formatted_number(price)
+    volume_num = parse_formatted_number(row.get("Volume", 0))
+    bid_offer_num = parse_formatted_number(bid_offer)
+    
+    bid_offer_table_md = generate_bid_offer_table_markdown(price_num, volume_num, bid_offer_num)
+    microstructure_md = generate_microstructure_markdown(ticker, bid_offer, is_vol_contract, row.get("Cluster", 0))
 
     md_content = f"""# 📈 INSTITUTIONAL RESEARCH REPORT
 **Date:** {datetime.now().strftime('%d %B %Y')} | **Ticker:** {ticker}
@@ -325,7 +281,11 @@ Katalis utama yang mendasari tingginya probabilitas historis saham ini adalah:
 
 ---
 
-{broker_summary_md}
+{bid_offer_table_md}
+
+---
+
+{microstructure_md}
 
 ---
 

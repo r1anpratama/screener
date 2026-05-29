@@ -685,8 +685,14 @@ def get_stock_history(ticker: str):
         # Bersihkan NaN
         df_stock = df_stock.bfill().fillna(0)
         
+        # Pastikan kolom vwap_ratio & bid_offer_ratio ada sebelum diekstrak
+        for col in ["vwap_ratio", "bid_offer_ratio"]:
+            if col not in df_stock.columns:
+                df_stock[col] = 1.0
+                
         records = df_stock[[
-            "date", "open", "high", "low", "close", "volume", "rsi_14", "sma_20", "bb_upper", "bb_lower"
+            "date", "open", "high", "low", "close", "volume", "rsi_14", "sma_20", "bb_upper", "bb_lower",
+            "vwap_ratio", "bid_offer_ratio"
         ]].to_dict(orient="records")
         
         return records

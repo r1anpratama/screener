@@ -402,7 +402,7 @@ class StockScreener:
             "bid_offer_ratio": "Bid/Offer",
             "signal_volatility_contraction": "Vol.Contract",
             "signal_momentum_extreme": "RSI Oversold",
-            "signal_bandarmology": "Bandar",
+            "signal_bandarmology": "Akm. VWAP",
             "signal_foreign_inflow": "Asing Beli",
             "signal_strong_bid": "Bid Kuat",
             "total_signals": "Sinyal",
