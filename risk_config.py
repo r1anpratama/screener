@@ -1,0 +1,5 @@
+# Backtesting Configuration Parameters
+RISK_FREE_RATE = 0.06
+MAX_DRAWDOWN_LIMIT = 0.15
+DEFAULT_POSITION_SIZE = 0.10
+KELLY_FRACTION = 0.5
